@@ -1,3 +1,4 @@
+
 services:
   db:
     image: postgres:17
@@ -19,6 +20,18 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
     ports:
       - "127.0.0.1:5050:80"
+    depends_on:
+      - db
+
+  app:
+    build: .
+    container_name: url-shortener-app
+    environment:
+      PORT: "8080"
+      BASE_URL: ${BASE_URL}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    ports:
+      - "127.0.0.1:8080:8080"
     depends_on:
       - db
 
