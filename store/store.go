@@ -10,6 +10,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+const dbTimeout = 3 * time.Second
+
 type PostgresStore struct {
 	pool *pgxpool.Pool
 }
@@ -26,7 +28,10 @@ func NewPostgresStore(ctx context.Context, dsn string) (*PostgresStore, error) {
 }
 
 func (s *PostgresStore) Save(link Link) error {
-	_, err := s.pool.Exec(context.Background(),
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+
+	_, err := s.pool.Exec(ctx,
 		`INSERT INTO links (code, original_url, created_at, expires_at)
 		 VALUES ($1, $2, $3, $4)`,
 		link.Code, link.OriginalURL, link.CreatedAt, link.ExpiresAt,
@@ -42,8 +47,11 @@ func (s *PostgresStore) Save(link Link) error {
 }
 
 func (s *PostgresStore) Get(code string) (Link, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+
 	var link Link
-	err := s.pool.QueryRow(context.Background(),
+	err := s.pool.QueryRow(ctx,
 		`SELECT code, original_url, created_at, expires_at
 		 FROM links WHERE code = $1`, code,
 	).Scan(&link.Code, &link.OriginalURL, &link.CreatedAt, &link.ExpiresAt)
@@ -58,6 +66,7 @@ func (s *PostgresStore) Get(code string) (Link, error) {
 	}
 	return link, nil
 }
+
 func (s *PostgresStore) Close() {
 	s.pool.Close()
 }
